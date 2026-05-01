@@ -1,0 +1,25 @@
+{
+  "imagePath": "image-targets/puzzle_luminance.png",
+  "resources": {
+    "originalImage": "puzzle_original.png",
+    "croppedImage": "puzzle_cropped.png",
+    "thumbnailImage": "puzzle_thumbnail.png",
+    "geometryImage": "puzzle_geometry.png",
+    "luminanceImage": "puzzle_luminance.png"
+  },
+  "name": "puzzle",
+  "type": "PLANAR",
+  "properties": {
+    "top": 85,
+    "left": 0,
+    "width": 1024,
+    "height": 1365,
+    "isRotated": true,
+    "originalWidth": 1024,
+    "originalHeight": 1536
+  },
+  "userMetadataIsJson": true,
+  "loadAutomatically": true,
+  "created": 1744348626730,
+  "updated": 1744348637985
+}
