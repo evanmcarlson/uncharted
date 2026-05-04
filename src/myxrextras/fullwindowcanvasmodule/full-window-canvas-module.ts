@@ -1,3 +1,4 @@
+// @ts-nocheck
 declare const XR8: any
 
 function create() {
