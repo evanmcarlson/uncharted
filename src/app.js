@@ -41,3 +41,13 @@ const observer = new MutationObserver(() => {
 })
 
 observer.observe(document.body, {childList: true})
+
+const onxrloaded = () => {
+  XR8.XrController.configure({
+    imageTargetData: [
+      require('../image-targets/puzzle.json'),
+    ],
+  })
+}
+window.XR8 ? onxrloaded() : window.addEventListener('xrloaded', onxrloaded)
+
