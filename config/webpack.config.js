@@ -139,24 +139,4 @@ const mainConfig = {
   devServer: sharedDevServer,
 }
 
-const verifyConfig = {
-  entry: path.join(srcPath, 'verify.js'),
-  output: {
-    filename: 'verify.bundle.js',
-    path: distPath,
-    publicPath: '/',
-  },
-  plugins: [
-    new HtmlWebpackPlugin({
-      template: path.join(srcPath, 'verify.html'),
-      filename: 'verify.html',
-      inject: false,
-    }),
-  ],
-  resolve: {extensions: ['.ts', '.js']},
-  module: {rules: sharedModuleRules},
-  mode: 'production',
-  context: srcPath,
-}
-
-module.exports = [mainConfig, verifyConfig]
+module.exports = mainConfig
