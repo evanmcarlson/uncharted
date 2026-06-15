@@ -71,7 +71,35 @@ const makeDefaultHtmlLoader = () => ({
   },
 })
 
-const config = {
+const sharedModuleRules = [
+  makeJsLoader(),
+  makeTsLoader(),
+  makeCssLoader(),
+  makeSassLoader(),
+  makeAssetLoader(),
+  makeDefaultHtmlLoader(),
+]
+
+const sharedDevServer = {
+  allowedHosts: ['.ngrok-free.dev'],
+  open: false,
+  compress: true,
+  hot: true,
+  liveReload: false,
+  headers: {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+    'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
+  },
+  client: {
+    overlay: {
+      warnings: false,
+      errors: true,
+    },
+  },
+}
+
+const mainConfig = {
   entry: path.join(srcPath, 'app.js'),
   output: {
     filename: 'bundle.js',
@@ -105,36 +133,30 @@ const config = {
     }),
   ],
   resolve: {extensions: ['.ts', '.js']},
-  module: {
-    rules: [
-      makeJsLoader(),
-      makeTsLoader(),
-      makeCssLoader(),
-      makeSassLoader(),
-      makeAssetLoader(),
-      makeDefaultHtmlLoader(),
-    ],
-  },
+  module: {rules: sharedModuleRules},
   mode: 'production',
   context: srcPath,
-  devServer: {
-    allowedHosts: ['.ngrok-free.dev'],
-    open: false,
-    compress: true,
-    hot: true,
-    liveReload: false,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-      'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
-    },
-    client: {
-      overlay: {
-        warnings: false,
-        errors: true,
-      },
-    },
-  },
+  devServer: sharedDevServer,
 }
 
-module.exports = config
+const verifyConfig = {
+  entry: path.join(srcPath, 'verify.js'),
+  output: {
+    filename: 'verify.bundle.js',
+    path: distPath,
+    publicPath: '/',
+  },
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: path.join(srcPath, 'verify.html'),
+      filename: 'verify.html',
+      inject: false,
+    }),
+  ],
+  resolve: {extensions: ['.ts', '.js']},
+  module: {rules: sharedModuleRules},
+  mode: 'production',
+  context: srcPath,
+}
+
+module.exports = [mainConfig, verifyConfig]

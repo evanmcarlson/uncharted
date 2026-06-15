@@ -35,6 +35,221 @@
     }
   </script>
 
+  <style>
+    .scan-bracket {
+      fill: none;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke: #E5E5E5;
+      transition: stroke 0.15s;
+    }
+    #scan-svg.breathing {
+      animation: breathe 1.8s ease-in-out infinite;
+      transform-origin: 50% 50%;
+    }
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.035); }
+    }
+    #scan-status-bar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 90px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+      background: rgba(0, 0, 0, 0.55);
+    }
+    #scan-thumb {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      flex-shrink: 0;
+    }
+    #scan-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #scan-status-text {
+      color: #F1EFE8;
+      font-size: 15px;
+      font-weight: 500;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #verify-btn {
+      margin-left: auto;
+      pointer-events: auto;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      cursor: pointer;
+      background: #0088ff;
+      color: #000;
+      transition: opacity 0.2s, background 0.2s;
+    }
+    #verify-btn:disabled {
+      background: rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.35);
+      cursor: default;
+    }
+    #verify-btn.loading {
+      background: rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.55);
+      cursor: default;
+    }
+    #shutter-flash {
+      position: fixed;
+      inset: 0;
+      z-index: 49;
+      background: #fff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.05s ease-in;
+    }
+    #shutter-flash.flash {
+      opacity: 1;
+      transition: none;
+    }
+    #photo-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: translateY(100%);
+      transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+      overflow: hidden;
+    }
+    #photo-overlay.visible {
+      transform: translateY(0);
+    }
+    #photo-overlay-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.5;
+    }
+    #photo-overlay-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 0 40px;
+      text-align: center;
+    }
+    #overlay-verifying { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .overlay-spinner {
+      width: 52px;
+      height: 52px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: overlay-spin 0.8s linear infinite;
+    }
+    @keyframes overlay-spin { to { transform: rotate(360deg); } }
+    #overlay-result { display: none; flex-direction: column; align-items: center; gap: 12px; }
+    #overlay-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #overlay-icon.success { background: #0088ff; color: #fff; }
+    #overlay-icon.failed  { background: #E57373; color: #fff; }
+    @keyframes popIn {
+      from { transform: scale(0.3); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+    #overlay-title {
+      margin: 0;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #overlay-reason {
+      margin: 0;
+      color: rgba(255,255,255,0.65);
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 260px;
+    }
+    #overlay-action-btn {
+      margin-top: 8px;
+      padding: 12px 36px;
+      border-radius: 50px;
+      border: 2px solid rgba(255,255,255,0.55);
+      background: transparent;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      cursor: pointer;
+    }
+    #overlay-name-group {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 280px;
+      margin-top: 4px;
+    }
+    #overlay-name-input {
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1.5px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      text-align: center;
+      outline: none;
+    }
+    #overlay-name-input::placeholder { color: rgba(255,255,255,0.3); }
+    #overlay-name-input:focus { border-color: #0088ff; }
+    #overlay-submit-btn {
+      padding: 13px;
+      border-radius: 10px;
+      border: none;
+      background: #0088ff;
+      color: #000;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      cursor: pointer;
+    }
+    #overlay-submit-btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+    .overlay-label {
+      margin: 0;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 500;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+  </style>
+
   <script type="module">
     import * as THREE from 'three';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -67,7 +282,7 @@
     landing-page="backgroundColor: #000;"
     xrextras-loading
     xrextras-runtime-error
-    renderer="colorManagement: true"
+    renderer="colorManagement: true; preserveDrawingBuffer: true"
     xrweb
     custom-events
     solved-btn
@@ -118,6 +333,47 @@
       </a-plane>
     </a-entity>
   </a-scene>
+
+  <div id="scan-overlay" style="position:fixed; inset:0; pointer-events:none; z-index:1;">
+    <svg id="scan-svg" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%;">
+      <path id="bracket-tl" class="scan-bracket"/>
+      <path id="bracket-tr" class="scan-bracket"/>
+      <path id="bracket-br" class="scan-bracket"/>
+      <path id="bracket-bl" class="scan-bracket"/>
+    </svg>
+    <div id="scan-status-bar">
+      <div id="scan-thumb">
+        <img id="scan-thumb-img" src="./assets/puzzle_thumbnail.png" alt="target"/>
+      </div>
+      <div id="scan-status-text">Looking for puzzle</div>
+      <button id="verify-btn" disabled>Verify</button>
+    </div>
+  </div>
+
+  <div id="shutter-flash"></div>
+
+  <div id="photo-overlay">
+    <img id="photo-overlay-img" alt="" />
+    <div id="photo-overlay-content">
+      <div id="overlay-verifying">
+        <div class="overlay-spinner"></div>
+        <p class="overlay-label">Verifying…</p>
+      </div>
+      <div id="overlay-result">
+        <div id="overlay-icon"></div>
+        <p id="overlay-title"></p>
+        <p id="overlay-reason"></p>
+        <div id="overlay-name-group">
+          <input id="overlay-name-input" type="text" maxlength="50" placeholder="Your name" autocomplete="off" />
+          <button id="overlay-submit-btn">Submit to Leaderboard</button>
+        </div>
+        <button id="overlay-action-btn"></button>
+        <!-- DEV ONLY: remove before launch -->
+        <button id="overlay-dev-verify-btn" style="display:none;margin-top:4px;padding:8px 20px;border-radius:50px;border:1px dashed rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.3);font-size:12px;font-family:-apple-system,sans-serif;cursor:pointer;">Verify Anyway (dev)</button>
+        <!-- /DEV -->
+      </div>
+    </div>
+  </div>
 
 </body>
 

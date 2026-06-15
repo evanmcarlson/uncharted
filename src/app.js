@@ -25,6 +25,8 @@ AFRAME.registerComponent('bob', bobComponent)
 import {modelFadeComponent} from './components/model-fade'
 AFRAME.registerComponent('model-fade', modelFadeComponent)
 
+import {setupVerifyOverlay} from './components/verifyOverlay'
+
 let inDom = false
 const observer = new MutationObserver(() => {
   if (document.querySelector('.prompt-box-8w')) {
@@ -50,3 +52,12 @@ const onxrloaded = () => {
   })
 }
 window.XR8 ? onxrloaded() : window.addEventListener('xrloaded', onxrloaded)
+
+document.addEventListener('DOMContentLoaded', () => {
+  const sceneEl = document.querySelector('a-scene')
+  if (sceneEl.hasLoaded) {
+    setupVerifyOverlay(sceneEl)
+  } else {
+    sceneEl.addEventListener('loaded', () => setupVerifyOverlay(sceneEl))
+  }
+})
