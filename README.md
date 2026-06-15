@@ -1,49 +1,61 @@
-### Your Exported Project
-This zip contains your project source code, assets, image targets, and configuration needed to build and publish your 8th Wall project. It does not connect to any 8th Wall services, so will work even after the 8th Wall servers are shut down.
+# Uncharted — AR Puzzle Verifier
 
-### Setup
-If node/npm are not installed, install using https://github.com/nvm-sh/nvm or https://nodejs.org/en/download.
+A WebAR experience built on [8th Wall](https://www.8thwall.com/) and A-Frame. Point your camera at the puzzle image target; when detected, a frame is automatically captured and sent to a verification API that checks whether the puzzle is fully assembled. Results appear in a card overlay at the bottom of the screen.
 
-Run `npm install` in this folder.
+## Features
 
-### Development
-Run `npm run serve` to run the development server.
+- Image-target tracking with animated bracket reticle
+- Auto-triggers verification on target detection (no button tap required)
+- Indeterminate progress bar during API call
+- Success / failure result card with optional leaderboard submission
+- Camera feed runs continuously — no pause/resume on overlay
 
-#### Testing on Mobile
-To test your project on mobile devices, especially for AR experiences that require camera access, you'll need to serve your development server over HTTPS. We recommend using [ngrok](https://ngrok.com/) to create a secure tunnel to your local server. After setting up ngrok, add the following configuration to `config/webpack.config.js` under the `devServer` section:
+## Setup
 
-```javascript
-devServer: {
-  // ... existing config
-  allowedHosts: ['.ngrok-free.dev']
-}
+Requires Node/npm ([nvm](https://github.com/nvm-sh/nvm) or [nodejs.org](https://nodejs.org/en/download)).
+
+```bash
+npm install
 ```
 
-### Publishing
-Run `npm run build` to generate a production build. The resulting build will be in `dist/`. You can host this bundle on any web server you want.
+## Development
 
-### Project Overview
-- `src/`: Contains all your original project code and assets.
-    - References to asset bundles will need to be updated. Asset bundles are now plain folders. For example,
-      - GLTF bundles need to be updated to the `.gltf` file in the folder, i.e., if your model is at `assets/mymodel.gltf/`, update your code to reference `assets/mymodel.gltf/mymodel_file.gltf`.
-- `image-targets/`: Contains your project's image targets (if any).
-  - The image target with the `_luminance` suffix is the image target loaded by the engine. The others are used for various display purposes, but are exported for your convenience.
-  - To enable image targets, call this in `app.js` or `app.ts` file. (Note: `app.js` or `app.ts` may not be created by default; you will need to create this file yourself.) The autoload targets will have a `"loadAutomatically": true` property in their json file.
-```javascript
-const onxrloaded = () => {
-  XR8.XrController.configure({
-    imageTargetData: [
-      require('../image-targets/target1.json'),
-      require('../image-targets/target2.json'),
-    ],
-  })
-}
-window.XR8 ? onxrloaded() : window.addEventListener('xrloaded', onxrloaded)
+```bash
+npm run serve
 ```
-- `config/`: Contains the necessary webpack configuration and typescript definitions to support project development.
-- `external/`: Contains dependencies used by your project, loaded in `index.html`.
-  - If you are not using the XR Engine, you can remove the xr.js script tag from `index.html` and delete the `external/xr/` folder to save bandwidth.
-  - You can also customize whether `face`, `slam`, or both, are loaded on the `data-preload-chunks` attribute.
 
-### Final Notes
-Please reach out to support@8thwall.com with any questions not yet answered in the docs. Thank you for being part of 8th Wall's story!
+To test on a mobile device (required for camera/AR), expose the local server over HTTPS with [ngrok](https://ngrok.com/):
+
+```javascript
+// config/webpack.config.js — devServer section
+allowedHosts: ['.ngrok-free.dev']
+```
+
+## Build & Deploy
+
+```bash
+npm run build   # output → dist/
+```
+
+The `dist/` folder is a static bundle that can be hosted anywhere. The project is configured for [Vercel](https://vercel.com/) via `vercel.json`.
+
+## Project Structure
+
+```
+src/
+  index.html              # entry point, all UI markup and inline styles
+  app.js                  # registers A-Frame components, wires image targets
+  components/
+    verifyOverlay.js      # bracket reticle, auto-verify flow, result overlay
+    spawn.js              # shows/hides 3D content on target found/lost
+    postprocessing.js     # bloom / post-fx on the 3D scene
+    ...
+  assets/                 # models, textures, thumbnails
+image-targets/            # 8th Wall image target JSON (puzzle.json)
+config/                   # webpack config and TypeScript definitions
+external/                 # vendored scripts (A-Frame, 8th Wall engine)
+```
+
+## Verification API
+
+On target detection the app POSTs a JPEG frame (base64) to the Lambda endpoint in `verifyOverlay.js`. The response is `{ complete: boolean, reason: string }`. If `complete`, an optional leaderboard submission is available via the session API.

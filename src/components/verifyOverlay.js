@@ -13,15 +13,17 @@ const PUZZLE_ID = _params.get('puzzleId') || location.pathname.split('/').filter
 const RETURN_URL = _params.get('returnUrl') || (PUZZLE_ID ? `/${PUZZLE_ID}` : '/')
 
 let state = 'searching'
+let isTracking = false
 let currentCorners = null
 let trackedObj = null
 let targetLocalCorners = null
 let lostTimer = null
 let animId = null
 
-let bTL, bTR, bBR, bBL, statusText, verifyBtn
-let shutterFlash, photoOverlay, photoOverlayImg
+let bTL, bTR, bBR, bBL, scanHint
+let photoOverlay
 let overlayVerifying, overlayResult, overlayIcon, overlayTitle, overlayReason, overlayActionBtn
+let overlayNameGroup, overlayNameInput
 let overlayDevVerifyBtn
 
 function getReticleCorners() {
@@ -133,25 +135,16 @@ function playChime() {
   } catch (e) {}
 }
 
-function triggerShutterFlash() {
-  shutterFlash.classList.add('flash')
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      shutterFlash.classList.remove('flash')
-    })
-  })
-}
-
-function showOverlayVerifying(imageSrc) {
-  photoOverlayImg.src = imageSrc
+function showOverlayVerifying() {
   overlayVerifying.style.display = 'flex'
   overlayResult.style.display = 'none'
   photoOverlay.classList.add('visible')
-  try { XR8.pause() } catch (e) {}
+  photoOverlay.classList.add('verifying')
 }
 
 function showOverlayResult(success, title, reason, btnLabel) {
   overlayVerifying.style.display = 'none'
+  photoOverlay.classList.remove('verifying')
   overlayIcon.className = success ? 'success' : 'failed'
   overlayIcon.textContent = success ? '✓' : '✕'
   overlayTitle.textContent = title
@@ -163,7 +156,6 @@ function showOverlayResult(success, title, reason, btnLabel) {
 
 function hidePhotoOverlay() {
   photoOverlay.classList.remove('visible')
-  try { XR8.resume() } catch (e) {}
 }
 
 function captureFrame(sceneEl) {
@@ -199,13 +191,46 @@ async function callVerifyAPI(base64Image) {
   return res.json()
 }
 
+async function runVerify(sceneEl) {
+  if (state !== 'locked') return
+
+  let base64
+  try {
+    base64 = await captureFrame(sceneEl)
+  } catch (err) {
+    console.error('[verify] capture error', err)
+    return
+  }
+
+  showOverlayVerifying()
+  enterVerifying()
+
+  try {
+    const result = await callVerifyAPI(base64)
+    if (result.complete) {
+      const actionLabel = SESSION_ID ? null : 'Done'
+      showOverlayResult(true, 'Puzzle Complete!', result.reason, actionLabel)
+      if (SESSION_ID) {
+        overlayNameGroup.style.display = 'flex'
+        overlayActionBtn.style.display = 'none'
+        overlayNameInput.focus()
+      }
+      enterSuccess()
+    } else {
+      showOverlayResult(false, 'Puzzle Incomplete', result.reason || 'Could not confirm the puzzle is fully assembled.', 'Try Again')
+      enterFailed()
+    }
+  } catch (err) {
+    console.error('[verify] error', err)
+    showOverlayResult(false, 'Something went wrong', err?.message || 'Please try again.', 'Try Again')
+    enterFailed()
+  }
+}
+
 function enterSearching() {
   state = 'searching'
   setBracketColor(NEUTRAL_COLOR)
-  statusText.textContent = `Looking for ${TARGET_NAME}`
-  verifyBtn.disabled = true
-  verifyBtn.textContent = 'Verify'
-  verifyBtn.classList.remove('loading')
+  scanHint.classList.remove('hidden')
 
   const from = currentCorners || getReticleCorners()
   animateTo(from, getReticleCorners(), easeInOutQuad, () => {
@@ -238,37 +263,25 @@ function enterLocked(detail, sceneEl) {
   state = 'locked'
   setSvgBreathing(false)
   setBracketColor(SUCCESS_COLOR)
-  statusText.textContent = `${TARGET_NAME} found`
-  verifyBtn.disabled = false
+  scanHint.classList.add('hidden')
 
   const from = currentCorners || getReticleCorners()
-  animateTo(from, projected, easeOutBack)
+  animateTo(from, projected, easeOutBack, () => runVerify(sceneEl))
 }
 
 function enterVerifying() {
   state = 'verifying'
-  verifyBtn.disabled = true
-  verifyBtn.classList.add('loading')
-  verifyBtn.textContent = 'Analyzing…'
 }
 
 function enterSuccess() {
   state = 'success'
   setBracketColor(SUCCESS_COLOR)
-  statusText.textContent = '✓ Puzzle complete!'
-  verifyBtn.textContent = '✓ Verified'
-  verifyBtn.disabled = true
-  verifyBtn.classList.remove('loading')
   playChime()
 }
 
 function enterFailed() {
   state = 'locked'
   setBracketColor(NEUTRAL_COLOR)
-  statusText.textContent = `${TARGET_NAME} found`
-  verifyBtn.textContent = 'Verify'
-  verifyBtn.disabled = false
-  verifyBtn.classList.remove('loading')
 }
 
 export function setupVerifyOverlay(sceneEl) {
@@ -276,58 +289,18 @@ export function setupVerifyOverlay(sceneEl) {
   bTR = document.getElementById('bracket-tr')
   bBR = document.getElementById('bracket-br')
   bBL = document.getElementById('bracket-bl')
-  statusText = document.getElementById('scan-status-text')
-  verifyBtn = document.getElementById('verify-btn')
-  shutterFlash = document.getElementById('shutter-flash')
+  scanHint = document.getElementById('scan-hint')
   photoOverlay = document.getElementById('photo-overlay')
-  photoOverlayImg = document.getElementById('photo-overlay-img')
   overlayVerifying = document.getElementById('overlay-verifying')
   overlayResult = document.getElementById('overlay-result')
   overlayIcon = document.getElementById('overlay-icon')
   overlayTitle = document.getElementById('overlay-title')
   overlayReason = document.getElementById('overlay-reason')
   overlayActionBtn = document.getElementById('overlay-action-btn')
-  const overlayNameGroup = document.getElementById('overlay-name-group')
-  const overlayNameInput = document.getElementById('overlay-name-input')
+  overlayNameGroup = document.getElementById('overlay-name-group')
+  overlayNameInput = document.getElementById('overlay-name-input')
   const overlaySubmitBtn = document.getElementById('overlay-submit-btn')
   overlayDevVerifyBtn = document.getElementById('overlay-dev-verify-btn')
-
-  verifyBtn.addEventListener('click', async () => {
-    if (state !== 'locked') return
-
-    let base64
-    try {
-      base64 = await captureFrame(sceneEl)
-    } catch (err) {
-      console.error('[verify] capture error', err)
-      return
-    }
-
-    triggerShutterFlash()
-    setTimeout(() => showOverlayVerifying(`data:image/jpeg;base64,${base64}`), 80)
-    enterVerifying()
-
-    try {
-      const result = await callVerifyAPI(base64)
-      if (result.complete) {
-        const actionLabel = SESSION_ID ? null : 'Done'
-        showOverlayResult(true, 'Puzzle Complete!', result.reason, actionLabel)
-        if (SESSION_ID) {
-          overlayNameGroup.style.display = 'flex'
-          overlayActionBtn.style.display = 'none'
-          overlayNameInput.focus()
-        }
-        enterSuccess()
-      } else {
-        showOverlayResult(false, 'Puzzle Incomplete', result.reason || 'Could not confirm the puzzle is fully assembled.', 'Try Again')
-        enterFailed()
-      }
-    } catch (err) {
-      console.error('[verify] error', err)
-      showOverlayResult(false, 'Something went wrong', err?.message || 'Please try again.', 'Try Again')
-      enterFailed()
-    }
-  })
 
   overlayActionBtn.addEventListener('click', () => {
     if (state === 'success') {
@@ -335,7 +308,11 @@ export function setupVerifyOverlay(sceneEl) {
       return
     }
     hidePhotoOverlay()
-    enterSearching()
+    if (isTracking) {
+      setTimeout(() => runVerify(sceneEl), 500)
+    } else {
+      enterSearching()
+    }
   })
 
   overlaySubmitBtn.addEventListener('click', async () => {
@@ -384,6 +361,7 @@ export function setupVerifyOverlay(sceneEl) {
   sceneEl.object3D.add(trackedObj)
 
   sceneEl.addEventListener('xrimagefound', ({ detail }) => {
+    isTracking = true
     if (state !== 'locked') enterLocked(detail, sceneEl)
   })
 
@@ -404,6 +382,7 @@ export function setupVerifyOverlay(sceneEl) {
     if (lostTimer) clearTimeout(lostTimer)
     lostTimer = setTimeout(() => {
       lostTimer = null
+      isTracking = false
       enterSearching()
     }, LOST_DEBOUNCE_MS)
   })
@@ -412,5 +391,4 @@ export function setupVerifyOverlay(sceneEl) {
   renderBrackets(currentCorners)
   setBracketColor(NEUTRAL_COLOR)
   setSvgBreathing(true)
-  statusText.textContent = `Looking for ${TARGET_NAME}`
 }
